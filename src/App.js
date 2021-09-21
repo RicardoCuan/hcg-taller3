@@ -4,13 +4,13 @@ import './App.css'
 function App() {
   const canvasRef = useRef(null)
   const contextRef = useRef(null)
-  const [shape, setShape] = useState('line')
+  const [tool, setTool] = useState('line')
   const [countPoint, setCountPoint] = useState(0)
   const [arrayPointX, setArrayPointX] = useState([])
   const [arrayPointY, setArrayPointY] = useState([])
   const [lineWidth, setLineWidth] = useState(1)
   const [lineColor, setLineColor] = useState('#00000')
-
+  
   useEffect(()=>{
     const canvas = canvasRef.current
     canvas.width = (window.innerWidth*0.7) * 2
@@ -117,6 +117,90 @@ function App() {
     contextRef.current.fillRect(cx+addy, cy-addx, lineWidth, lineWidth)
     contextRef.current.fillRect(cx-addy, cy-addx, lineWidth, lineWidth)
   }
+  const getPixelPos = (x, y) => {
+    const canvas = canvasRef.current
+    return (y * canvas.width + x) * 4;
+  };
+  
+  const matchStartColor = (data, pos, startColor)  => {
+    return (data[pos]   === startColor.r &&
+            data[pos+1] === startColor.g &&
+            data[pos+2] === startColor.b &&
+            data[pos+3] === startColor.a);
+  };
+  
+  const colorPixel =  (data, pos, color) => {
+    data[pos] = color.r || 0;
+    data[pos+1] = color.g || 0;
+    data[pos+2] = color.b || 0;
+    data[pos+3] = color.hasOwnProperty("a") ? color.a : 255;
+  };
+  
+  // http://www.williammalone.com/articles/html5-canvas-javascript-paint-bucket-tool/
+  const floodFill = (startX, startY, fillColor) => {
+    const canvas = canvasRef.current
+    var dstImg = contextRef.current.getImageData(0,0,canvas.width,canvas.height);
+    var dstData = dstImg.data;
+    
+    var startPos = getPixelPos(startX, startY);
+    var startColor = {
+      r: dstData[startPos],
+      g: dstData[startPos+1],
+      b: dstData[startPos+2],
+      a: dstData[startPos+3]
+    };
+    var todo = [[startX,startY]];
+    
+    while (todo.length) {
+      var pos = todo.pop();
+      var x = pos[0];
+      var y = pos[1];    
+      var currentPos = getPixelPos(x, y);
+      
+      while((y-- >= 0) && matchStartColor(dstData, currentPos, startColor)) {
+        currentPos -= canvas.width * 4;
+      }
+      
+      currentPos += canvas.width * 4;
+      ++y;
+      var reachLeft = false;
+      var reachRight = false;
+      
+      while((y++ < canvas.height-1) && matchStartColor(dstData, currentPos, startColor)) {
+      
+        colorPixel(dstData, currentPos, fillColor);
+        
+        if (x > 0) {
+          if (matchStartColor(dstData, currentPos-4, startColor)) {
+            if (!reachLeft) {
+              todo.push([x-1, y]);
+              reachLeft = true;
+            }
+          }
+          else if (reachLeft) {
+            reachLeft = false;
+          }
+        }
+        
+        if (x < canvas.width-1) {
+          if (matchStartColor(dstData, currentPos+4, startColor)) {
+            if (!reachRight) {
+              todo.push([x+1, y]);
+              reachRight = true;
+            }
+          }
+          else if (reachRight) {
+            reachRight = false;
+          }
+        }
+  
+        currentPos += canvas.width * 4;
+      }
+    }
+    
+    contextRef.current.putImageData(dstImg,0,0);
+  };
+
 
   const clearCanvas = () => {
     const canvas = canvasRef.current
@@ -128,13 +212,20 @@ function App() {
 
   const draw = ({ nativeEvent }) => {
     const { offsetX, offsetY } = nativeEvent
+
+    // Herramientas que necesitan 1 clic
+    if(tool === 'fill') return floodFill(offsetX,offsetY,{r:200,g:200,b:200})
+
+    // Herramientas que necesitan 2 clic
     setPoint(1,nativeEvent)
-    if(shape === 'line') return lineDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
-    if(shape === 'rec') return rectangleDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
-    if(shape === 'square') return squareDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
-    if(shape === 'circle') return circumference(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
+    if(tool === 'line') return lineDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
+    if(tool === 'rec') return rectangleDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
+    if(tool === 'square') return squareDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
+    if(tool === 'circle') return circumference(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
+    
+    // Herramientas que necesitan 3 clic
     setPoint(2,nativeEvent)
-    if(shape === 'triangle') return triangleDDA(arrayPointX[0],arrayPointY[0],arrayPointX[1],arrayPointY[1],offsetX,offsetY)
+    if(tool === 'triangle') return triangleDDA(arrayPointX[0],arrayPointY[0],arrayPointX[1],arrayPointY[1],offsetX,offsetY)
   }
 
   return (
@@ -151,7 +242,7 @@ function App() {
           type="radio" 
           name="draw" 
           value="dda" 
-          onClick={() => setShape('line')}
+          onClick={() => setTool('line')}
           defaultChecked={true}
         />
         <label> Linea: DDA</label>
@@ -159,30 +250,37 @@ function App() {
         <input
           type="radio"
           name="draw"
-          onClick={() => setShape('rec')}
+          onClick={() => setTool('rec')}
         />
         <label> Rectangulo</label>
         <br />
         <input
           type="radio"
           name="draw"
-          onClick={() => setShape('square')}
+          onClick={() => setTool('square')}
         />
         <label> Cuadrado</label>
         <br />
         <input
           type="radio"
           name="draw"
-          onClick={() => setShape('triangle')}
+          onClick={() => setTool('triangle')}
         />
         <label> Triangulo</label>
         <br />
         <input
           type="radio"
           name="draw"
-          onClick={() => setShape('circle')}
+          onClick={() => setTool('circle')}
         />
         <label> Círculo</label>
+        <br />
+        <input
+          type="radio"
+          name="draw"
+          onClick={() => setTool('fill')}
+        />
+        <label> Relleno</label>
         <br />
         <br />
         <h4>Personalización:</h4>
