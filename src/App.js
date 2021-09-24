@@ -1,206 +1,14 @@
-import {useRef,useEffect,useState} from 'react'
+import { useCanvas } from './components/CanvasContext'
+import Canvas from './components/Canvas'
+import LineWidthTool from './components/LineWidthTool'
+import ToolMenu from './components/ToolMenu'
+import ColorMenu from './components/ColorMenu'
 import './App.css'
 
 function App() {
-  const canvasRef = useRef(null)
-  const contextRef = useRef(null)
-  const [tool, setTool] = useState('line')
-  const [countPoint, setCountPoint] = useState(0)
-  const [arrayPointX, setArrayPointX] = useState([])
-  const [arrayPointY, setArrayPointY] = useState([])
-  const [lineWidth, setLineWidth] = useState(1)
-  const [lineColor, setLineColor] = useState('#00000')
-  
-  useEffect(()=>{
-    const canvas = canvasRef.current
-    canvas.width = (window.innerWidth*0.7) * 2
-    canvas.height = (window.innerHeight) * 2
-    canvas.style.width = `${window.innerWidth*0.7}px`
-    canvas.style.height = `${window.innerHeight}px`
-    
-    const context = canvas.getContext("2d")
-    context.scale(2,2)
-    contextRef.current = context
-  }, [])
-
-  const setPoint = (max, nativeEvent) => {
-    const { offsetX, offsetY } = nativeEvent
-    if(countPoint < max){ 
-      setArrayPointX([...arrayPointX, offsetX])
-      setArrayPointY([...arrayPointY, offsetY])
-      setCountPoint(countPoint+1)
-      return
-    }
-    setCountPoint(0)
-    setArrayPointX([])
-    setArrayPointY([])
-  }
-  const lineDDA = (x1,y1,x2,y2) => {
-    /** Diferencial de dx = x2 - x1 */
-    let dx = x2 - x1
-    /** Diferencial de dy = y2 - y1 */
-    let dy = y2 - y1
-
-    /** Dependiendo del valor absoluto de dx y dy
-     * se va a escoger el número de paso que se pondrá el pixel como
-     * steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy) */
-    const step = Math.abs(dx) > Math.abs(dy) ? Math.abs(dx) : Math.abs(dy)
-
-    /* Calculando el incremento de x para cada Paso */
-    dx = dx / step
-    /* Calculando el incremento de y para cada Paso */
-    dy = dy / step
-
-    /** Distancia en X del pixel a pintar */
-    let pixelX = x1
-    /** Distancia en Y del pixel a pintar */
-    let pixelY = y1
-
-    // Color de la linea
-    contextRef.current.fillStyle = lineColor
-
-    for (let i = 0; i < step; i++) {
-      // Dibujar un pixel
-      contextRef.current.fillRect(pixelX,pixelY,lineWidth,lineWidth)
-      // Sumar 
-      pixelX += dx
-      pixelY += dy
-    }
-  }
-  const rectangleDDA = (x1,y1,x2,y2) => {
-    lineDDA(x1,y1,x2,y1)
-    lineDDA(x2,y1,x2,y2)
-    lineDDA(x2,y2,x1,y2)
-    lineDDA(x1,y2,x1,y1)
-  }
-  const squareDDA = (x1,y1,x2,y2) => {
-    const dx = x2-x1
-    const dy = y2-y1
-    const r = dx > dy ? dx : dy
-    lineDDA(x1,y1,x1+r,y1)
-    lineDDA(x1+r,y1,x1+r,y1+r)
-    lineDDA(x1+r,y1+r,x1,y1+r)
-    lineDDA(x1,y1+r,x1,y1)
-  }
-  const triangleDDA = (x1,y1,x2,y2,x3,y3) => {
-    lineDDA(x1,y1,x2,y2)
-    lineDDA(x2,y2,x3,y3)
-    lineDDA(x3,y3,x1,y1)
-  }
-  const circumference = (cx,cy,rx,ry) => {
-    const dx = cx - rx
-    const dy = cy - ry
-    const r = Math.sqrt(dx*dx+dy*dy)
-    let p = 1 - r
-    let addx = 0
-    let addy = r
-    contextRef.current.fillStyle = lineColor
-    drawEightPoint(cx,cy,addx,addy)
-    while(addx<addy){
-      addx++
-      if(p<0) {
-        p+=2*addx+1
-      } else {
-        addy--
-        p+=2*(addx-addy)+1
-      }
-      drawEightPoint(cx,cy,addx,addy)
-    }
-  }
-  const drawEightPoint = (cx,cy,addx,addy) => {
-    contextRef.current.fillRect(cx+addx, cy+addy, lineWidth, lineWidth)
-    contextRef.current.fillRect(cx-addx, cy+addy, lineWidth, lineWidth)
-    contextRef.current.fillRect(cx+addx, cy-addy, lineWidth, lineWidth)
-    contextRef.current.fillRect(cx-addx, cy-addy, lineWidth, lineWidth)
-    contextRef.current.fillRect(cx+addy, cy+addx, lineWidth, lineWidth)
-    contextRef.current.fillRect(cx-addy, cy+addx, lineWidth, lineWidth)
-    contextRef.current.fillRect(cx+addy, cy-addx, lineWidth, lineWidth)
-    contextRef.current.fillRect(cx-addy, cy-addx, lineWidth, lineWidth)
-  }
-  const getPixelPos = (x, y) => {
-    const canvas = canvasRef.current
-    return (y * canvas.width + x) * 4;
-  };
-  
-  const matchStartColor = (data, pos, startColor)  => {
-    return (data[pos]   === startColor.r &&
-            data[pos+1] === startColor.g &&
-            data[pos+2] === startColor.b &&
-            data[pos+3] === startColor.a);
-  };
-  
-  const colorPixel =  (data, pos, color) => {
-    data[pos] = color.r || 0;
-    data[pos+1] = color.g || 0;
-    data[pos+2] = color.b || 0;
-    data[pos+3] = color.hasOwnProperty("a") ? color.a : 255;
-  };
-  
-  // http://www.williammalone.com/articles/html5-canvas-javascript-paint-bucket-tool/
-  const floodFill = (startX, startY, fillColor) => {
-    const canvas = canvasRef.current
-    var dstImg = contextRef.current.getImageData(0,0,canvas.width,canvas.height);
-    var dstData = dstImg.data;
-    
-    var startPos = getPixelPos(startX, startY);
-    var startColor = {
-      r: dstData[startPos],
-      g: dstData[startPos+1],
-      b: dstData[startPos+2],
-      a: dstData[startPos+3]
-    };
-    var todo = [[startX,startY]];
-    
-    while (todo.length) {
-      var pos = todo.pop();
-      var x = pos[0];
-      var y = pos[1];    
-      var currentPos = getPixelPos(x, y);
-      
-      while((y-- >= 0) && matchStartColor(dstData, currentPos, startColor)) {
-        currentPos -= canvas.width * 4;
-      }
-      
-      currentPos += canvas.width * 4;
-      ++y;
-      var reachLeft = false;
-      var reachRight = false;
-      
-      while((y++ < canvas.height-1) && matchStartColor(dstData, currentPos, startColor)) {
-      
-        colorPixel(dstData, currentPos, fillColor);
-        
-        if (x > 0) {
-          if (matchStartColor(dstData, currentPos-4, startColor)) {
-            if (!reachLeft) {
-              todo.push([x-1, y]);
-              reachLeft = true;
-            }
-          }
-          else if (reachLeft) {
-            reachLeft = false;
-          }
-        }
-        
-        if (x < canvas.width-1) {
-          if (matchStartColor(dstData, currentPos+4, startColor)) {
-            if (!reachRight) {
-              todo.push([x+1, y]);
-              reachRight = true;
-            }
-          }
-          else if (reachRight) {
-            reachRight = false;
-          }
-        }
-  
-        currentPos += canvas.width * 4;
-      }
-    }
-    
-    contextRef.current.putImageData(dstImg,0,0);
-  };
-
+  const {
+    canvasRef,
+  } = useCanvas()
 
   const clearCanvas = () => {
     const canvas = canvasRef.current
@@ -210,104 +18,25 @@ function App() {
     context.fillRect(0, 0, canvas.width, canvas.height)
   }
 
-  const draw = ({ nativeEvent }) => {
-    const { offsetX, offsetY } = nativeEvent
-
-    // Herramientas que necesitan 1 clic
-    if(tool === 'fill') return floodFill(offsetX,offsetY,{r:200,g:200,b:200})
-
-    // Herramientas que necesitan 2 clic
-    setPoint(1,nativeEvent)
-    if(tool === 'line') return lineDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
-    if(tool === 'rec') return rectangleDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
-    if(tool === 'square') return squareDDA(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
-    if(tool === 'circle') return circumference(arrayPointX[0],arrayPointY[0],offsetX,offsetY)
-    
-    // Herramientas que necesitan 3 clic
-    setPoint(2,nativeEvent)
-    if(tool === 'triangle') return triangleDDA(arrayPointX[0],arrayPointY[0],arrayPointX[1],arrayPointY[1],offsetX,offsetY)
-  }
-
   return (
     <div className="container">
-      <canvas
-        ref={canvasRef}
-        onClick={draw}
-      />
-      <section className="info">
-      <h1>Taller 1</h1>
-      <div className="form">
-        <h4>Formas:</h4>
-        <input 
-          type="radio" 
-          name="draw" 
-          value="dda" 
-          onClick={() => setTool('line')}
-          defaultChecked={true}
-        />
-        <label> Linea: DDA</label>
-        <br />
-        <input
-          type="radio"
-          name="draw"
-          onClick={() => setTool('rec')}
-        />
-        <label> Rectangulo</label>
-        <br />
-        <input
-          type="radio"
-          name="draw"
-          onClick={() => setTool('square')}
-        />
-        <label> Cuadrado</label>
-        <br />
-        <input
-          type="radio"
-          name="draw"
-          onClick={() => setTool('triangle')}
-        />
-        <label> Triangulo</label>
-        <br />
-        <input
-          type="radio"
-          name="draw"
-          onClick={() => setTool('circle')}
-        />
-        <label> Círculo</label>
-        <br />
-        <input
-          type="radio"
-          name="draw"
-          onClick={() => setTool('fill')}
-        />
-        <label> Relleno</label>
-        <br />
-        <br />
-        <h4>Personalización:</h4>
-        <label>Grosor </label>
-        <input
-          type="number"
-          name="draw"
-          min="1"
-          max="10"
-          step="1"
-          defaultValue={lineWidth}
-          onChange={e => setLineWidth(e.target.value)}
-        />
-        <br />
-        <label>Color </label>
-        <input
-          type="color"
-          name="draw"
-          defaultValue={lineColor}
-          onChange={e => setLineColor(e.target.value)}
-        />
-        <br />
-        <br />
-        <button onClick={clearCanvas}>Borrar todo</button>
-      </div>
-      </section>
-    </div>
+      <Canvas/>
+       <section className="info">
+       <h1>Taller 1</h1>
+       <div className="form">
+        <ToolMenu />
+         <br />
+         <br />
+         <h4>Personalización:</h4>
+         <LineWidthTool/>
+         <br />
+         <ColorMenu />
+         <br />
+         <br />
+         <button onClick={clearCanvas}>Borrar todo</button>
+       </div>
+       </section>
+     </div>
   )
 }
 
