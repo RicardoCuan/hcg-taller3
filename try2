@@ -1,0 +1,173 @@
+<html>
+<body>
+ 
+ 
+<script type="text/javascript">
+ 
+// main
+function main()
+{
+    var canvasSize = new Coords(100, 100);
+ 
+    var canvas = document.createElement("canvas");
+    canvas.width = canvasSize.x;
+    canvas.height = canvasSize.y;
+    document.body.appendChild(canvas);
+ 
+    var graphics = canvas.getContext("2d");
+ 
+    graphics.fillStyle = "DarkGreen";
+    graphics.fillRect(0, 0, canvasSize.x, canvasSize.y);
+ 
+    var fontHeight = canvasSize.y * .25;
+    graphics.font = fontHeight + "px sans-serif";
+    graphics.fillStyle = "Orange";
+    graphics.fillText
+    (
+        "FLOOD", 
+        fontHeight * .25, 
+        (canvasSize.y - fontHeight) / 2 + fontHeight 
+    );
+ 
+    graphics.fillStyle = "Cyan";
+    graphics.floodFill(0, 0, 0);
+}
+ 
+// extensions
+ 
+function CanvasRenderingContext2DExtensions()
+{
+    // extension class
+}
+{
+    CanvasRenderingContext2D.prototype.floodFill = function(x, y, colorDifferenceTolerance)
+    {    
+        var canvas = this.canvas;
+        var imageSize = new Coords(canvas.width, canvas.height);
+        var imageSizeMinusOnes = imageSize.clone().subtract(new Coords(1, 1));
+ 
+        var colorToFillOverRGBA = this.getImageData(x, y, 1, 1).data;
+ 
+        var pixelPos = new Coords(x, y);
+        var pixelIndexStart = pixelPos.y * imageSize.x + pixelPos.x;
+        var pixelIndicesToTest = [ pixelIndexStart ];
+        var pixelIndicesAlreadyTested = [];
+ 
+        var neighborOffsets = 
+        [
+            new Coords(-1, 0),
+            new Coords(1, 0),
+            new Coords(0, -1),
+            new Coords(0, 1)
+        ];
+ 
+        while (pixelIndicesToTest.length > 0)
+        {
+            var pixelIndex = pixelIndicesToTest[0];
+            pixelIndicesToTest.splice(0, 1);
+            pixelIndicesAlreadyTested[pixelIndex] = pixelIndex;
+ 
+            pixelPos.x = pixelIndex % imageSize.x;
+            pixelPos.y = Math.floor(pixelIndex / imageSize.x);
+ 
+            var pixelRGBA = this.getImageData(pixelPos.x, pixelPos.y, 1, 1).data;
+            var pixelDifference = Math.abs
+            (
+                pixelRGBA[0] - colorToFillOverRGBA[0]
+                + pixelRGBA[1] - colorToFillOverRGBA[1]
+                + pixelRGBA[2] - colorToFillOverRGBA[2]
+            );
+ 
+            if (pixelDifference <= colorDifferenceTolerance)
+            {
+                this.fillRect(pixelPos.x, pixelPos.y, 1, 1);
+ 
+                var neighborPos = new Coords();
+ 
+                for (var n = 0; n < neighborOffsets.length; n++)
+                {
+                    var neighborOffset = neighborOffsets[n];
+ 
+                    neighborPos.overwriteWith
+                    (
+                        pixelPos
+                    ).add
+                    (
+                        neighborOffset
+                    );
+ 
+                    if (neighborPos.isInRange(imageSize) == true)
+                    {
+                        var neighborIndex = 
+                            neighborPos.y * imageSize.x + neighborPos.x;
+                        var isPixelIndexAlreadyUnderConsideration = 
+                        (
+                            pixelIndicesToTest.indexOf(neighborIndex) >= 0 
+                            || pixelIndicesAlreadyTested[neighborIndex] != null
+                        )  
+                        if (isPixelIndexAlreadyUnderConsideration == false)
+                        {
+                            pixelIndicesToTest.push(neighborIndex);
+                        }
+                    }
+                }
+            }                
+        }
+    }
+}
+ 
+// classes
+ 
+function Coords(x, y)
+{
+    this.x = x;
+    this.y = y;
+}
+{
+    Coords.prototype.add = function(other)
+    {
+        this.x += other.x;
+        this.y += other.y;
+        return this;
+    }
+ 
+    Coords.prototype.clone = function()
+    {
+        return new Coords(this.x, this.y);
+    }
+ 
+    Coords.prototype.isInRange = function(max)
+    {
+        var returnValue = 
+        (
+            this.x >= 0 
+            && this.x <= max.x
+            && this.y >= 0 
+            && this.y <= max.y
+        );
+        return returnValue;
+    }
+ 
+    Coords.prototype.overwriteWith = function(other)
+    {
+        this.x = other.x;
+        this.y = other.y;
+        return this;
+    }
+ 
+    Coords.prototype.subtract = function(other)
+    {
+        this.x -= other.x;
+        this.y -= other.y;
+        return this;
+    }
+}
+ 
+// run
+ 
+main();
+ 
+</script>
+ 
+</body>
+</html>
