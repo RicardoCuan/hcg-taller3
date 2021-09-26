@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
-import {CanvasProvider} from './components/CanvasContext'
 import reportWebVitals from './reportWebVitals';
+import { CanvasProvider } from './components/CanvasContext'
+import App from './container/App';
+import './styles/index.css';
 
 ReactDOM.render(
   <React.StrictMode>

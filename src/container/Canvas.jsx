@@ -1,5 +1,5 @@
 import {useEffect} from 'react'
-import {useCanvas} from './CanvasContext'
+import {useCanvas} from '../components/CanvasContext'
 
 const Canvas = () => {
   const {
@@ -8,14 +8,16 @@ const Canvas = () => {
     draw,
   } = useCanvas()
   
-  useEffect(()=>{
+  useEffect(() => {
     prepareCanvas()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <canvas
+      className='canvas'
       ref={canvasRef}
-      onClick={draw}
+      onClick={e => draw(e)}
     />
   )
 }

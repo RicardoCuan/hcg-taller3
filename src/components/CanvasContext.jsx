@@ -18,14 +18,20 @@ export const CanvasProvider = ({ children }) => {
     const canvas = canvasRef.current
     if (!canvas.getContext) return
 
-    canvas.width = (window.innerWidth*0.7) * 2
-    canvas.height = (window.innerHeight) * 2
-    canvas.style.width = `${window.innerWidth*0.7}px`
-    canvas.style.height = `${window.innerHeight}px`
-  
+    // Dimensiones del canvas
+    canvas.width = (window.innerWidth-600) * 2
+    canvas.height = (window.innerHeight-230) * 2
+    canvas.style.width = `${window.innerWidth-600}px`
+    canvas.style.height = `${window.innerHeight-230}px`
     const context = canvas.getContext("2d")
     context.scale(2,2)
 
+    // Colorear de blanco el canvas
+    context.fillStyle = "white"
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = "black"
+
+    // Definición del context
     contextRef.current = context
   }
 
@@ -33,7 +39,7 @@ export const CanvasProvider = ({ children }) => {
   const draw = ({nativeEvent}) => {
     const { offsetX, offsetY } = nativeEvent
     console.log(`
-      x=${offsetX},y=${offsetY}
+      x=${arrayPointX},y=${arrayPointY}
       tool=${tool}
       color=${lineColor}
       width=${lineWidth}
@@ -51,6 +57,15 @@ export const CanvasProvider = ({ children }) => {
     // Herramientas que necesitan 3 clic
     setPoint(2,nativeEvent)
     if(tool === 'triangle') return triangleDDA(contextRef, lineColor, lineWidth, arrayPointX[0],arrayPointY[0],arrayPointX[1],arrayPointY[1],offsetX,offsetY)
+  }
+
+  /** Dibuja un rectangulo blanco */
+  const clearCanvas = () => {
+    if (!contextRef.current || !canvasRef.current) return
+
+    contextRef.current.fillStyle = "white"
+    contextRef.current.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    contextRef.current.fillStyle = "black"
   }
 
   const setPoint = (max, nativeEvent) => {
@@ -78,7 +93,8 @@ export const CanvasProvider = ({ children }) => {
         setLineColor,
         setLineWidth,
         draw,
-        prepareCanvas
+        prepareCanvas,
+        clearCanvas
       }}
     >
       {children}

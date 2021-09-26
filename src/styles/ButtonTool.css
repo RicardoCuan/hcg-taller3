@@ -1,0 +1,24 @@
+.button-tool--input{
+  -webkit-appearance: none;
+}
+
+.button-tool--label{  
+  height: 60px;
+  width: 60px;
+  padding: 5px;
+  border: 2px solid white;
+  border-radius: 3px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-tool--input:checked + .button-tool--label {
+  background-color: rgba(255,255,255,0.5);
+  box-shadow: 0 15px 45px rgba(24,249,141,0.2);
+}
+
+.line-icon {
+  transform: rotate(-45deg);
+}

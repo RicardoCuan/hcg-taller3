@@ -1,0 +1,49 @@
+.app-container {
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  /* border: 5px solid black; */
+  grid-template-columns: 300px 1fr 300px;
+  grid-template-rows: 100px 1fr 100px 30px;
+  grid-template-areas:
+    "colorm header tool"
+    "colorm canvas tool"
+    "colorm linew tool"
+    "footer footer footer";
+    background: rgb(0,224,255);
+    background: linear-gradient(45deg, rgba(0,224,255,1) 0%, rgba(98,0,255,1) 100%);
+}
+
+.header {
+  grid-area: header;
+  /* border: 1px solid pink; */
+}
+
+.canvas {
+  grid-area: canvas;
+  /* border: 4px solid red; */
+}
+
+.tool-menu {
+  grid-area: tool;
+  /* border: 1px solid green; */
+}
+
+.line-width {
+  grid-area: linew;
+  /* border: 1px solid blue;*/
+}
+
+.color-menu {
+  grid-area: colorm;
+  /* border: 1px solid orange; */
+}
+
+.footer {
+  grid-area: footer;
+  /* border:1px solid purple; */
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+}
