@@ -33,12 +33,6 @@ export const CanvasProvider = ({ children }) => {
 
     // Definición del context
     contextRef.current = context
-
-    for (let i = 0; i < canvas.width; i+=10) {
-      for (let j = 0; j < canvas.height; j+=10) {
-        rectangleDDA(contextRef, lineColor, lineWidth, i,j,i+10,j+10)
-      }
-    }
   }
 
   /** Lógica del dibujo en canvas */
