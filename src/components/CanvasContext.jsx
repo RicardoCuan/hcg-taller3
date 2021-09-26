@@ -19,12 +19,12 @@ export const CanvasProvider = ({ children }) => {
     if (!canvas.getContext) return
 
     // Dimensiones del canvas
-    canvas.width = (window.innerWidth-600) * 2
-    canvas.height = (window.innerHeight-230) * 2
+    canvas.width = (window.innerWidth-600)
+    canvas.height = (window.innerHeight-230)
     canvas.style.width = `${window.innerWidth-600}px`
     canvas.style.height = `${window.innerHeight-230}px`
     const context = canvas.getContext("2d")
-    context.scale(2,2)
+    context.scale(1,1)
 
     // Colorear de blanco el canvas
     context.fillStyle = "white"
@@ -33,19 +33,20 @@ export const CanvasProvider = ({ children }) => {
 
     // Definición del context
     contextRef.current = context
+
+    for (let i = 0; i < canvas.width; i+=10) {
+      for (let j = 0; j < canvas.height; j+=10) {
+        rectangleDDA(contextRef, lineColor, lineWidth, i,j,i+10,j+10)
+      }
+    }
   }
 
   /** Lógica del dibujo en canvas */
   const draw = ({nativeEvent}) => {
     const { offsetX, offsetY } = nativeEvent
-    console.log(`
-      x=${arrayPointX},y=${arrayPointY}
-      tool=${tool}
-      color=${lineColor}
-      width=${lineWidth}
-    `)
+
     // Herramientas que necesitan 1 clic
-    if(tool === 'fill') return floodFill(canvasRef, contextRef, offsetX,offsetY,{r:200,g:200,b:200})
+    if(tool === 'fill') return floodFill(canvasRef,contextRef,lineColor,offsetX,offsetY)
 
     // Herramientas que necesitan 2 clic
     setPoint(1,nativeEvent)
