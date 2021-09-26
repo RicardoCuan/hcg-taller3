@@ -86,86 +86,129 @@ const drawEightPoint = (contextRef, lineWidth, cx,cy,addx,addy) => {
 }
 
 
-// http://www.williammalone.com/articles/html5-canvas-javascript-paint-bucket-tool/
-export const floodFill = (canvasRef, contextRef, startX, startY, fillColor) => {
-  const canvas = canvasRef.current
-  var dstImg = contextRef.current.getImageData(0,0,canvas.width,canvas.height);
-  var dstData = dstImg.data;
-  
-  var startPos = getPixelPos(startX, startY);
-  var startColor = {
-    r: dstData[startPos],
-    g: dstData[startPos+1],
-    b: dstData[startPos+2],
-    a: dstData[startPos+3]
-  };
-  var todo = [[startX,startY]];
-  
-  while (todo.length) {
-    var pos = todo.pop();
-    var x = pos[0];
-    var y = pos[1];    
-    var currentPos = getPixelPos(x, y);
-    
-    while((y-- >= 0) && matchStartColor(dstData, currentPos, startColor)) {
-      currentPos -= canvas.width * 4;
+const canvas = document.querySelector('#main-canvas')
+const ctx = canvas.getContext('2d')
+
+// Set canvas size
+canvas.width = 200
+canvas.height = 200
+
+// Fill the canvas and create some shapes
+ctx.fillStyle = '#000'
+ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+ctx.fillStyle = '#0000ff'
+ctx.scale(2, 2)
+
+const randomColor = () => {
+  let str = Math.round(Math.random() * 0x1000000).toString(16)
+  while (str.length < 6) {
+    str = '0' + str
+  }
+  return '#' + str
+}
+
+console.log(randomColor())
+
+for (let i = 0; i < 25; i++) {
+  ctx.fillStyle = randomColor()
+  ctx.fillRect(
+    Math.round(Math.random() * canvas.width / 2),
+    Math.round(Math.random() * canvas.height / 2),
+    Math.round(Math.random() * 50),
+    Math.round(Math.random() * 50)
+  )
+}
+
+function getColorAtPixel(imageData, x, y) {
+  const {width, data} = imageData
+
+  return {
+    r: data[4 * (width * y + x) + 0],
+    g: data[4 * (width * y + x) + 1],
+    b: data[4 * (width * y + x) + 2],
+    a: data[4 * (width * y + x) + 3]
+  }
+}
+
+function setColorAtPixel(imageData, color, x, y) {
+  const {width, data} = imageData
+
+  data[4 * (width * y + x) + 0] = color.r & 0xff
+  data[4 * (width * y + x) + 1] = color.g & 0xff
+  data[4 * (width * y + x) + 2] = color.b & 0xff
+  data[4 * (width * y + x) + 3] = color.a & 0xff
+}
+
+function colorMatch(a, b) {
+  return a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a
+}
+
+function floodFill(imageData, newColor, x, y) {
+  const {width, height, data} = imageData
+  const stack = []
+  const baseColor = getColorAtPixel(imageData, x, y)
+  let operator = {x, y}
+
+  // Check if base color and new color are the same
+  if (colorMatch(baseColor, newColor)) {
+    return
+  }
+
+  // Add the clicked location to stack
+  stack.push({x: operator.x, y: operator.y})
+
+  while (stack.length) {
+    operator = stack.pop()
+    let contiguousDown = true // Vertical is assumed to be true
+    let contiguousUp = true // Vertical is assumed to be true
+    let contiguousLeft = false
+    let contiguousRight = false
+
+    // Move to top most contiguousDown pixel
+    while (contiguousUp && operator.y >= 0) {
+      operator.y--
+      contiguousUp = colorMatch(getColorAtPixel(imageData, operator.x, operator.y), baseColor)
     }
-    
-    currentPos += canvas.width * 4;
-    ++y;
-    var reachLeft = false;
-    var reachRight = false;
-    
-    while((y++ < canvas.height-1) && matchStartColor(dstData, currentPos, startColor)) {
-    
-      colorPixel(dstData, currentPos, fillColor);
-      
-      if (x > 0) {
-        if (matchStartColor(dstData, currentPos-4, startColor)) {
-          if (!reachLeft) {
-            todo.push([x-1, y]);
-            reachLeft = true;
-          }
+
+    // Move downward
+    while (contiguousDown && operator.y < height) {
+      setColorAtPixel(imageData, newColor, operator.x, operator.y)
+
+      // Check left
+      if (operator.x - 1 >= 0 && colorMatch(getColorAtPixel(imageData, operator.x - 1, operator.y), baseColor)) {
+        if (!contiguousLeft) {
+          contiguousLeft = true
+          stack.push({x: operator.x - 1, y: operator.y})
         }
-        else if (reachLeft) {
-          reachLeft = false;
-        }
-      }
-      
-      if (x < canvas.width-1) {
-        if (matchStartColor(dstData, currentPos+4, startColor)) {
-          if (!reachRight) {
-            todo.push([x+1, y]);
-            reachRight = true;
-          }
-        }
-        else if (reachRight) {
-          reachRight = false;
-        }
+      } else {
+        contiguousLeft = false
       }
 
-      currentPos += canvas.width * 4;
+      // Check right
+      if (operator.x + 1 < width && colorMatch(getColorAtPixel(imageData, operator.x + 1, operator.y), baseColor)) {
+        if (!contiguousRight) {
+          stack.push({x: operator.x + 1, y: operator.y})
+          contiguousRight = true
+        }
+      } else {
+        contiguousRight = false
+      }
+
+      operator.y++
+      contiguousDown = colorMatch(getColorAtPixel(imageData, operator.x, operator.y), baseColor)
     }
   }
-  
-  contextRef.current.putImageData(dstImg,0,0);
-};
+}
 
-const getPixelPos = (canvasRef, x, y) => {
-  const canvas = canvasRef
-  return (y * canvas.width + x) * 4;
-};
+const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
-const matchStartColor = (data, pos, startColor)  => {
-  return (data[pos]   === startColor.r &&
-          data[pos+1] === startColor.g &&
-          data[pos+2] === startColor.b &&
-          data[pos+3] === startColor.a);
-};
+const col = {r: 0xff, g: 0xff, b: 0x0, a: 0xff}
 
-const colorPixel =  (data, pos, color) => {
-  data[pos] = color.r || 0;
-  data[pos+1] = color.g || 0;
-  data[pos+2] = color.b || 0;
-  data[pos+3] = color.hasOwnProperty("a") ? color.a : 255;
-};
+canvas.addEventListener('click', event => {
+  const rect = canvas.getBoundingClientRect()
+  const x = Math.round(event.clientX - rect.left)
+  const y = Math.round(event.clientY - rect.top)
+  floodFill(imageData, col, x, y)
+  ctx.putImageData(imageData, 0, 0)
+})
