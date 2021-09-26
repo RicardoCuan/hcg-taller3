@@ -86,9 +86,6 @@ const drawEightPoint = (contextRef, lineWidth, cx,cy,addx,addy) => {
 }
 
 export const floodFill = (canvasRef, contextRef, color, x1, y1) => {
-  const rect = canvasRef.current.getBoundingClientRect()
-  const x = Math.round(x1 - rect.left)
-  const y = Math.round(y1 - rect.top)
   const imageData = contextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height)
   floodFillAlg(imageData, convertHex(color), x1, y1)
   contextRef.current.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
@@ -96,7 +93,7 @@ export const floodFill = (canvasRef, contextRef, color, x1, y1) => {
 }
 
 const floodFillAlg = (imageData, newColor, x, y) => {
-  const {width, height, data} = imageData
+  const {width, height} = imageData
   const stack = []
   const baseColor = getColorAtPixel(imageData, x, y)
   let operator = {x, y}
